@@ -146,8 +146,8 @@ Vectors:
 Header:
 	dc.b "SEGA GENESIS    " ; Console name
 	dc.b "(C)SEGA 1992.SEP" ; Copyright holder and release date (generally year)
-	dc.b "SONIC THE HEDGEHOG 2 2022 FIX VERSION           " ; Domestic name
-	dc.b "SONIC THE HEDGEHOG 2 2022 FIX VERSION           " ; International name
+	dc.b "ANDREW IN SONIC THE HEDGEHOG 2                  " ; Domestic name
+	dc.b "ANDREW IN SONIC THE HEDGEHOG 2                  " ; International name
     if gameRevision=0
 	dc.b "GM 00001051-00"   ; Version (REV00)
     elseif gameRevision=1
@@ -4201,7 +4201,8 @@ ArtNem_Player1VS2:	BINCLUDE	"art/nemesis/1Player2VS.bin"
 
 ; word_3E82:
 CopyrightText:
-  irpc chr,"@ 1992 SEGA"
+  irpc chr,"ANDREW GAME"
+;  irpc chr,"@ 1992 SEGA"
     if "chr"<>" "
 	dc.w  make_art_tile(ArtTile_ArtNem_FontStuff_TtlScr + 'chr'|0,0,0)
     else
@@ -11752,7 +11753,7 @@ OptionScreen_DrawUnselected:
 
 ;loc_9268
 OptionScreen_SelectTextPtr:
-	lea	(off_92D2).l,a4
+	lea	(off_92DE).l,a4
 	tst.b	(Graphics_Flags).w
 	bpl.s	+
 	lea	(off_92DE).l,a4
@@ -11803,10 +11804,6 @@ boxData macro txtlabel,vramAddr
 	boxData	TextOptScr_VsModeItems,VRAM_Plane_A_Name_Table+planeLocH40(9,11)
 	boxData	TextOptScr_SoundTest,VRAM_Plane_A_Name_Table+planeLocH40(9,19)
 
-off_92D2:
-	dc.l TextOptScr_SonicAndMiles
-	dc.l TextOptScr_SonicAlone
-	dc.l TextOptScr_MilesAlone
 off_92DE:
 	dc.l TextOptScr_SonicAndTails
 	dc.l TextOptScr_SonicAlone
@@ -12375,11 +12372,9 @@ super_sonic_cheat:	dc.b   4,   1,   2,   6,   0	; Book of Genesis, 41:26
 	; options screen menu text
 
 TextOptScr_PlayerSelect:	menutxt	"* PLAYER SELECT *"
-TextOptScr_SonicAndMiles:	menutxt	"SONIC AND MILES"	; byte_97DC:
-TextOptScr_SonicAndTails:	menutxt	"SONIC AND TAILS"	; byte_97EC:
-TextOptScr_SonicAlone:		menutxt	"SONIC ALONE    "	; byte_97FC:
-TextOptScr_MilesAlone:		menutxt	"MILES ALONE    "	; byte_980C:
-TextOptScr_TailsAlone:		menutxt	"TAILS ALONE    "	; byte_981C:
+TextOptScr_SonicAndTails:	menutxt	"ANDY AND NO1129"
+TextOptScr_SonicAlone:		menutxt	"ANDREW ALONE   "
+TextOptScr_TailsAlone:		menutxt	"NO1129 ALONE   "
 TextOptScr_VsModeItems:		menutxt	"*  2P VS ITEMS  *"
 TextOptScr_RandomItems:	menutxt	" RANDOM ITEMS  "
 TextOptScr_TeleportOnly:	menutxt	" TELEPORT ONLY "
@@ -13882,8 +13877,8 @@ textLoc function col,line,(($80 * line) + (2 * col))
 
 ; intro text pointers (one intro screen)
 vram_pnt := VRAM_TtlScr_Plane_A_Name_Table
-off_B2B0: creditsPtrs	byte_BD1A,textLoc($0F,$09), byte_BCEE,textLoc($11,$0C), \
-			byte_BCF6,textLoc($03,$0F), byte_BCE9,textLoc($12,$12)
+off_B2B0: creditsPtrs	byte_BD1A,textLoc($0F,$09), byte_BCEE,textLoc($08,$0C), \
+			byte_BCF6,textLoc($0C,$0F), byte_BCE9,textLoc($12,$12)
 
 ; credits screen pointer table
 off_B2CA:
@@ -14053,10 +14048,10 @@ byte_BCD9:	creditText 0,"LOCKY  P"
 
 ; intro text
 vram_src := ArtTile_ArtNem_CreditText
-byte_BCE9:	creditText   0,"IN"
-byte_BCEE:	creditText   0,"AND"
-byte_BCF6:	creditText   0,"MILES 'TAILS' PROWER"
-byte_BD1A:	creditText   0,"SONIC"
+byte_BCE9:	creditText   0,""
+byte_BCEE:	creditText   0,"ANDREW GAMING "
+byte_BCF6:	creditText   0,"PRESENT"
+byte_BD1A:	creditText   0," "
 
  charset ; revert character set
 
@@ -35263,43 +35258,6 @@ Sonic_ResetOnFloor_Part3:
 	bne.s	return_1B11E
 	move.b	#AniIDSonAni_Walk,anim(a0)
 
-;=====================================================================================================================
-; (Hitaxas) Fix for awful uncurling frame when a character lands on the ground from a jump
-; or if they walked off an object or edge of a floor while holding down.
-; this "bug" is present in S1-S3K.
-;=====================================================================================================================
-Sonic_ResetOnFloor_ContRolling:
-    move.b  #AniIDSonAni_Roll,anim(a0)      ; play rolling animation
- 
-;---------------------------------------------------------------------------------------------------------------------
-; check if character was already rolling, used for instances where they roll off one floor to land on another
-;---------------------------------------------------------------------------------------------------------------------
-    btst    #2,status(a0)                   ; was status set to rolling?
-    beq.w   Sonic_ResetOnFloor_Part3        ; if it was, branch
- 
-;---------------------------------------------------------------------------------------------------------------------
-; force character into rolling status, and play sound.
-;---------------------------------------------------------------------------------------------------------------------
-    bset    #2,status(a0)                   ; otherwise, set roll status
-    move.b  #$E,y_radius(a0)                ; adjust character's y_radius
-    move.b  #7,x_radius(a0)                 ; same for x_radius
-    addq.w  #5,$C(a0)                       ; move character 5 pixels down, so they aren't floating
-    move.w  #SndID_Roll,d0
-    jsr     (PlaySound).l                   ; play rolling sound - required because this is not part of the normal roll code                        
- 
-;---------------------------------------------------------------------------------------------------------------------
-; clear status flags and act like a true reset on floor. This is nearly identical to part 3
-; but without forcing character into walking animation.
-;---------------------------------------------------------------------------------------------------------------------  
-    bclr    #1,status(a0)                   ; clear in air status
-    bclr    #5,status(a0)                   ; clear pushing status
-    bclr    #4,status(a0)                   ; clear rolljump status
-    move.b  #0,jumping(a0)                  ; clear jumping flag
-    move.w  #0,(Chain_Bonus_counter).w
-    move.b  #0,flip_angle(a0)
-    move.b  #0,flips_remaining(a0)
-    move.w  #0,(Sonic_Look_delay_counter).w
- 
 return_1B11E:
 	rts
 
@@ -45032,7 +44990,6 @@ return_21C2A:
 
 ; loc_21C2C:
 Obj14_LaunchCharacter:
-	clr.b spindash_flag(a2)
 	move.w	y_vel(a0),y_vel(a2) ; set character y velocity to inverse of sol
 	neg.w	y_vel(a2)           ; y velocity
 	bset	#1,status(a2)       ; set character airborne flag
@@ -87373,7 +87330,7 @@ Off_Level: zoneOrderedOffsetTable 2,2
 	zoneOffsetTableEntry.w Level_EHZ1	; 2
 	zoneOffsetTableEntry.w Level_EHZ1	; 3
 	zoneOffsetTableEntry.w Level_WZ1	; 4
-	zoneOffsetTableEntry.w Level_WZ2	; 5
+	zoneOffsetTableEntry.w Level_EHZ1	; 5
 	zoneOffsetTableEntry.w Level_EHZ1	; 6
 	zoneOffsetTableEntry.w Level_EHZ1	; 7
 	zoneOffsetTableEntry.w Level_MTZ1	; 8
@@ -87385,7 +87342,7 @@ Off_Level: zoneOrderedOffsetTable 2,2
 	zoneOffsetTableEntry.w Level_HTZ1	; 14
 	zoneOffsetTableEntry.w Level_HTZ2	; 15
 	zoneOffsetTableEntry.w Level_HPZ1	; 16
-	zoneOffsetTableEntry.w Level_HPZ2	; 17
+	zoneOffsetTableEntry.w Level_HPZ1	; 17
 	zoneOffsetTableEntry.w Level_EHZ1	; 18
 	zoneOffsetTableEntry.w Level_EHZ1	; 19
 	zoneOffsetTableEntry.w Level_OOZ1	; 20
@@ -87412,14 +87369,6 @@ Level_EHZ1:	BINCLUDE	"level/layout/EHZ_1.bin"
 Level_EHZ2:	BINCLUDE	"level/layout/EHZ_2.bin"
 	even
 ;---------------------------------------------------------------------------------------
-; WZ act 1 level layout (Kosinski compression)
-Level_WZ1:	BINCLUDE	"level/layout/WZ_1.bin"
-	even
-;---------------------------------------------------------------------------------------
-; WZ act 2 level layout (Kosinski compression)
-Level_WZ2:	BINCLUDE	"level/layout/WZ_2.bin"
-	even
-;---------------------------------------------------------------------------------------
 ; MTZ act 1 level layout (Kosinski compression)
 Level_MTZ1:	BINCLUDE	"level/layout/MTZ_1.bin"
 	even
@@ -87444,12 +87393,12 @@ Level_HTZ1:	BINCLUDE	"level/layout/HTZ_1.bin"
 Level_HTZ2:	BINCLUDE	"level/layout/HTZ_2.bin"
 	even
 ;---------------------------------------------------------------------------------------
-; HPZ act 1 level layout (Kosinski compression)
-Level_HPZ1:	BINCLUDE	"level/layout/HPZ_1.bin"
+; WZ act 1 level layout (Kosinski compression)
+Level_WZ1:	BINCLUDE	"level/layout/WZ_1.bin"
 	even
 ;---------------------------------------------------------------------------------------
 ; HPZ act 1 level layout (Kosinski compression)
-Level_HPZ2:	BINCLUDE	"level/layout/HPZ_2.bin"
+Level_HPZ1:	BINCLUDE	"level/layout/HPZ_1.bin"
 	even
 ;---------------------------------------------------------------------------------------
 ; OOZ act 1 level layout (Kosinski compression)
@@ -89041,7 +88990,7 @@ Off_Rings: zoneOrderedOffsetTable 2,2
 	zoneOffsetTableEntry.w  Rings_Lev1_1	; 2  $01
 	zoneOffsetTableEntry.w  Rings_Lev1_2	; 3
 	zoneOffsetTableEntry.w  Rings_WZ_1	; 4  $02
-	zoneOffsetTableEntry.w  Rings_WZ_2	; 5
+	zoneOffsetTableEntry.w  Rings_Lev2_2	; 5
 	zoneOffsetTableEntry.w  Rings_Lev3_1	; 6  $03
 	zoneOffsetTableEntry.w  Rings_Lev3_2	; 7
 	zoneOffsetTableEntry.w  Rings_MTZ_1	; 8  $04
@@ -89076,8 +89025,8 @@ Rings_EHZ_1:	BINCLUDE	"level/rings/EHZ_1.bin"
 Rings_EHZ_2:	BINCLUDE	"level/rings/EHZ_2.bin"
 Rings_Lev1_1:	BINCLUDE	"level/rings/01_1.bin"
 Rings_Lev1_2:	BINCLUDE	"level/rings/01_2.bin"
-Rings_WZ_1:		BINCLUDE	"level/rings/WZ_1.bin"
-Rings_WZ_2:		BINCLUDE	"level/rings/WZ_2.bin"
+Rings_Lev2_1:	BINCLUDE	"level/rings/02_1.bin"
+Rings_Lev2_2:	BINCLUDE	"level/rings/02_2.bin"
 Rings_Lev3_1:	BINCLUDE	"level/rings/03_1.bin"
 Rings_Lev3_2:	BINCLUDE	"level/rings/03_2.bin"
 Rings_MTZ_1:	BINCLUDE	"level/rings/MTZ_1.bin"
@@ -89086,6 +89035,7 @@ Rings_MTZ_3:	BINCLUDE	"level/rings/MTZ_3.bin"
 Rings_MTZ_4:	BINCLUDE	"level/rings/MTZ_4.bin"
 Rings_HTZ_1:	BINCLUDE	"level/rings/HTZ_1.bin"
 Rings_HTZ_2:	BINCLUDE	"level/rings/HTZ_2.bin"
+Rings_WZ_1:		BINCLUDE	"level/rings/WZ_1.bin"
 Rings_HPZ_1:	BINCLUDE	"level/rings/HPZ_1.bin"
 Rings_HPZ_2:	BINCLUDE	"level/rings/HPZ_2.bin"
 Rings_Lev9_1:	BINCLUDE	"level/rings/09_1.bin"
@@ -89121,7 +89071,7 @@ Off_Objects: zoneOrderedOffsetTable 2,2
 	zoneOffsetTableEntry.w  Objects_Null	; 2  $01
 	zoneOffsetTableEntry.w  Objects_Null	; 3
 	zoneOffsetTableEntry.w  Objects_WZ_1	; 4  $02
-	zoneOffsetTableEntry.w  Objects_WZ_2	; 5
+	zoneOffsetTableEntry.w  Objects_Null	; 5
 	zoneOffsetTableEntry.w  Objects_Null	; 6  $03
 	zoneOffsetTableEntry.w  Objects_Null	; 7
 	zoneOffsetTableEntry.w  Objects_MTZ_1	; 8  $04
@@ -89158,10 +89108,6 @@ Objects_EHZ_1:	BINCLUDE	"level/objects/EHZ_1.bin"
 	ObjectLayoutBoundary
 Objects_EHZ_2:	BINCLUDE	"level/objects/EHZ_2.bin"
 	ObjectLayoutBoundary
-Objects_WZ_1:	BINCLUDE	"level/objects/WZ_1.bin"
-	ObjectLayoutBoundary
-Objects_WZ_2:	BINCLUDE	"level/objects/WZ_2.bin"
-	ObjectLayoutBoundary
 Objects_MTZ_1:	BINCLUDE	"level/objects/MTZ_1.bin"
 	ObjectLayoutBoundary
 Objects_MTZ_2:	BINCLUDE	"level/objects/MTZ_2.bin"
@@ -89175,6 +89121,8 @@ Objects_WFZ_2:	BINCLUDE	"level/objects/WFZ_2.bin"
 Objects_HTZ_1:	BINCLUDE	"level/objects/HTZ_1.bin"
 	ObjectLayoutBoundary
 Objects_HTZ_2:	BINCLUDE	"level/objects/HTZ_2.bin"
+	ObjectLayoutBoundary
+Objects_WZ_1:	BINCLUDE	"level/objects/WZ_1.bin"
 	ObjectLayoutBoundary
 Objects_HPZ_1:	BINCLUDE	"level/objects/HPZ_1.bin"
 	ObjectLayoutBoundary
